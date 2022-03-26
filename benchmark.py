@@ -1,5 +1,5 @@
 from time import time
-from solver import Solver
+from solvers.vanilla_solver import Solver
 
 def benchmark_solver_pickle_vs_no_pickle1():
     print('~~~PICKLE VS NO PICKLE 1~~~')
@@ -7,12 +7,12 @@ def benchmark_solver_pickle_vs_no_pickle1():
     solve2 = Solver()
 
     start = time()
-    best_queries = solve1.best_queries(5)
+    best_queries = solve1.find_best_queries(5)
     print(len(best_queries), best_queries)
     print(f'time elapsed: {time() - start}')
 
     start = time()
-    best_queries = solve2.best_queries(5)
+    best_queries = solve2.find_best_queries(5)
     print(len(best_queries), best_queries)
     print(f'time elapsed: {time() - start}')
 
