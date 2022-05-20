@@ -14,11 +14,17 @@ class VanillaSolver(SolverBase):
         find_best_query -> get_result -> update_answers -> repeat
     """
 
-    def __init__(self, pickle_path=None, answers_path='./answers.txt', words_path='./words.txt'):
+    def __init__(self,
+                 only_pick_answers=False,
+                 pickle_path=None,
+                 answers_path='./answers.txt',
+                 words_path='./words.txt',
+                 ):
         super().__init__(answers_path, words_path)
         self.answers = []
         self.words = []
         self.table = None
+        self.only_pick_answers = only_pick_answers
 
         with open(self.answers_path) as file:
             data = file.read().split('\n')
@@ -73,7 +79,7 @@ class VanillaSolver(SolverBase):
         if len(self.answers) == 1:
             return self.answers[0]
         max_entropy, best_word = 0, ''
-        for word in tqdm(self.words):
+        for word in tqdm(self.answers if self.only_pick_answers else self.words):
             e = self.query_entropy(word)
             if e > max_entropy:
                 max_entropy = e
@@ -85,9 +91,10 @@ class VanillaSolver(SolverBase):
         if len(self.answers) == 1:
             return [(0, self.answers[0])]
         # pairs of (entropy, word)
-        pairs = [(self.query_entropy(word), word) for word in tqdm(self.words)]
+        pairs = [(self.query_entropy(word), word)
+                 for word in tqdm(self.answers if self.only_pick_answers else self.words)]
         # returns (1st, 2nd, 3rd,..., n-th) best words
-        return sorted(pairs, key=lambda x: x[0])[-1:-count-1:-1]
+        return sorted(pairs, key=lambda x: x[0])[-1:-count - 1:-1]
 
     # pickles table
     def pickle_table(self, output_path):

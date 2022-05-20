@@ -9,9 +9,16 @@ from utils import guess, is_guess_valid, base_to_int
 
 
 class NSolver(SolverBase):
-    def __init__(self, N=2, pickle_path=None, answers_path='./answers.txt', words_path='./words.txt'):
+    def __init__(self,
+                 N=2,
+                 only_pick_answers=False,
+                 pickle_path=None,
+                 answers_path='./answers.txt',
+                 words_path='./words.txt'
+                 ):
         super().__init__(answers_path, words_path)
         self.N = N
+        self.only_pick_answers = only_pick_answers
         self.n_answers = []
 
         self.answers = []
@@ -38,7 +45,7 @@ class NSolver(SolverBase):
                 self.table = pickle.load(file)
 
     def reset(self):
-        self.n_answers = [self.answers.copy() for i in range(N)]
+        self.n_answers = [self.answers.copy() for i in range(self.N)]
 
     # update answers using array guess_codes.  Must be that len(guess_codes) == N
     def update_answers(self, query, guess_codes):
@@ -47,7 +54,7 @@ class NSolver(SolverBase):
             if guess_codes[i] == base_to_int('22222', 3):
                 self.n_answers[i] = []
             else:
-                self.n_answers[i] = [w for w in self.answers if
+                self.n_answers[i] = [w for w in self.n_answers[i] if
                                      (self.table[f'{w},{query}'] == guess_codes[i] if self.table
                                       else is_guess_valid(w, query, guess_codes[i]))]
         return [len(answers) for answers in self.n_answers]
@@ -55,8 +62,7 @@ class NSolver(SolverBase):
     # returns arr of entropies
     def query_entropy(self, query):
         def single_entropy(answers):
-            c = Counter(
-                [self.table[f'{a},{query}'] if self.table else guess(a, query) for a in answers])
+            c = Counter([self.table[f'{a},{query}'] if self.table else guess(a, query) for a in answers])
             s = sum(c.values())
             if s == 0:
                 return 0
@@ -65,10 +71,10 @@ class NSolver(SolverBase):
 
     def find_best_query(self):
         # this might not be optimal
-        if all(len(answers) == 1 for answers in self.n_answers):
-            return [answers[0] for answers in self.n_answers]
+        if all(len(answers) <= 1 for answers in self.n_answers):
+            return [answers[0] for answers in self.n_answers if answers][0]
         max_entropy, best_word = 0, ''
-        for word in tqdm(self.words):
+        for word in self.words:
             e = sum(self.query_entropy(word))
             if e > max_entropy:
                 max_entropy = e
@@ -76,11 +82,17 @@ class NSolver(SolverBase):
         return best_word
 
     def find_best_queries(self, count):
-        if all(len(answers) == 1 for answers in self.n_answers):
-            return [(0, answers[0]) for answers in self.n_answers]
+        if all(len(answers) <= 1 for answers in self.n_answers):
+            return [(0, answers[0]) for answers in self.n_answers if answers]
         # pairs of (entropy, word)
-        pairs = [(sum(self.query_entropy(word)), word) for word in tqdm(self.words)]
-        return sorted(pairs, key=lambda x: x[0])[-count:]
+        pairs = [(sum(self.query_entropy(word)), word) for word in self.words]
+        return sorted(pairs, key=lambda x: x[0])[-1:-count-1:-1]
 
     def pickle_table(self, output_path):
-        pass
+        d = {}
+        for answer in tqdm(self.answers):
+            for word in self.words:
+                d[f'{answer},{word}'] = guess(answer, word)
+        with open(output_path, 'wb') as file:
+            print('Pickling table...')
+            pickle.dump(d, file)
